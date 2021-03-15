@@ -28,6 +28,15 @@ class PrioritizedPlanningSolver(object):
 
         start_time = timer.time()
         result = []
+        # {'agent': 0, 'loc': [(1, 5)], 'timestep': 4}, {'agent': 1, 'loc': [(1,2),(1,3)], 'timestep':1},{'agent': 0, 'loc': [(1, 5)], 'timestep': 10}
+
+        # Sum of costs = 8
+        #    {'agent': 1, 'loc': [(1, 3)], 'timestep':2},
+        #    {'agent': 1, 'loc': [(1, 3), (1, 2)], 'timestep':2},
+        #    {'agent': 1, 'loc': [(1, 4)], 'timestep':3},
+        #    {'agent': 1, 'loc': [(1, 4), (1, 3)], 'timestep':3},
+        #    {'agent': 1, 'loc': [(1, 5)], 'timestep':4},
+        #    {'agent': 1, 'loc': [(1, 5), (1, 4)], 'timestep':4}
         constraints = []
 
         for i in range(self.num_of_agents):  # Find path for each agent
@@ -44,8 +53,28 @@ class PrioritizedPlanningSolver(object):
             #            * self.num_of_agents has the number of total agents
             #            * constraints: array of constraints to consider for future A* searches
 
-
             ##############################
+
+            # for loop -> iterate over num of agents
+            if len(constraints) == 0:
+                for i in range(self.num_of_agents):
+                    # for loop -> add constraint for the agent
+                    for j in range(len(path)):
+                        # print("I value:" + str(i))
+                        # print("path[j]:" + str(path[j]))
+                        # print("J value:" + str(j))
+                        # add constraints
+
+                        # agent 0 and 1 starts moving at its initial step -> do not put constraint at agent 0 and 1's initial state
+                        if (i != j):
+                            constraints.append(
+                                {'agent': i, 'loc': [path[j]], 'timestep': j})
+
+                            if j > 0:
+                                # print("path[j]:" + str(path[j]))
+                                # print("path[j-1]:" + str(path[j-1]))
+                                constraints.append(
+                                    {'agent': i, 'loc': [path[j], path[j-1]], 'timestep': j})
 
         self.CPU_time = timer.time() - start_time
 

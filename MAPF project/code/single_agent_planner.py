@@ -1,4 +1,6 @@
 import heapq
+import time
+
 
 def move(loc, dir):
     directions = [(0, -1), (1, 0), (0, 1), (-1, 0)]
@@ -26,7 +28,7 @@ def compute_heuristics(my_map, goal):
             child_cost = cost + 1
             if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
                or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
-               continue
+                continue
             if my_map[child_loc[0]][child_loc[1]]:
                 continue
             child = {'loc': child_loc, 'cost': child_cost}
@@ -49,12 +51,43 @@ def compute_heuristics(my_map, goal):
 
 def build_constraint_table(constraints, agent):
     ##############################
-    # Task 1.2/1.3: Return a table that constains the list of constraints of
+    # Task 1.2/1.3: Return a table that contains the list of constraints of
     #               the given agent for each time step. The table can be used
-    #               for a more efficient constraint violation check in the 
+    #               for a more efficient constraint violation check in the
     #               is_constrained function.
 
-    pass
+    # constraint looks like this
+    #  {'agent': 2,
+    #  'loc': [(3,4)],
+    #  'timestep': 5}
+
+    # create dictionary
+    constraintTable = dict()
+
+    # print(len(constraints))
+    # if len(constraints) == 0:
+    #     print("Nothing in constraints")
+    #     print(constraints)
+    # else:
+    #     print(constraints)
+    #     print(len(constraints))
+
+    for constraint in constraints:
+
+        # If the key positive is not yet in table, insert a new key into dictionary
+        if 'positive' not in constraint.keys():
+            constraint['positive'] = False
+
+        # Check which agent constraint is for
+        if constraint['agent'] == agent:
+            # check if the timestep already exists indexed, if it is we want to add the location onto that index
+            if constraint['timestep'] in constraintTable:
+                constraintTable[constraint['timestep']].append(
+                    constraint['loc'])
+            else:
+                constraintTable[constraint['timestep']] = [constraint['loc']]
+
+    return constraintTable
 
 
 def get_location(path, time):
@@ -82,11 +115,28 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
     #               any given constraint. For efficiency the constraints are indexed in a constraint_table
     #               by time step, see build_constraint_table.
 
-    pass
+    # check if next_loc and next_time is in the constraint table
+    # if it is return true, otherwise return false
+    if next_time in constraint_table:
+        # iterate over all locations at the timestep
+        for location in constraint_table[next_time]:
+            # if there is only one tuplle in constraints
+            # check for vertex constraint
+
+            if len(location) == 1:
+                if location == [next_loc]:
+                    return True
+            # else,
+            # check for negative edge constraints
+            elif location == [curr_loc, next_loc]:
+                return True
+
+        return False
 
 
 def push_node(open_list, node):
-    heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], node))
+    heapq.heappush(
+        open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], node))
 
 
 def pop_node(open_list):
@@ -111,34 +161,68 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     # Task 1.1: Extend the A* search to search in the space-time domain
     #           rather than space domain, only.
 
+    # Build constraint table
+    constraintTable = build_constraint_table(constraints, agent)
+
+    # print(len(constraintTable))
+    # print(max(constraintTable.keys()))
+
     open_list = []
     closed_list = dict()
     earliest_goal_timestep = 0
+    if constraintTable:
+        earliest_goal_timestep = max(constraintTable.keys())
+        # print(earliest_goal_timestep)
+
+    # limit time horizon of search to the upper bound
+    # size of environment 4 x 7 + agent = upperbound? -> always causes to raise BaseException
+    upperBoundLimit = 4 * 7 * agent
+
     h_value = h_values[start_loc]
-    root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None}
+    root = {'loc': start_loc, 'g_val': 0,
+            'h_val': h_value, 'parent': None, 'timestep': 0}
     push_node(open_list, root)
-    closed_list[(root['loc'])] = root
+    # tuple of cell, timestep taken from root node
+    closed_list[root['loc'], root['timestep']] = root
     while len(open_list) > 0:
         curr = pop_node(open_list)
+
+        # Adding the upperbound limit returns 'No solutions'
+        # if curr['timestep'] > upperBoundLimit:
+        #     raise BaseException('No solutions')
+
         #############################
         # Task 1.4: Adjust the goal test condition to handle goal constraints
-        if curr['loc'] == goal_loc:
+        # to go up to 10 timesteps, adjust earliest goal_time_step by taking the highest indexed key -> force it to reach timestep 10
+        if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
             return get_path(curr)
+
         for dir in range(4):
             child_loc = move(curr['loc'], dir)
-            if my_map[child_loc[0]][child_loc[1]]:
+
+            # for batch test, constraints to check if agent is inside of the environment and prune if not
+            if child_loc[0] < 0 or child_loc[1] < 0 or child_loc[0] > 7 or child_loc[1] > 7:
                 continue
-            child = {'loc': child_loc,
-                    'g_val': curr['g_val'] + 1,
-                    'h_val': h_values[child_loc],
-                    'parent': curr}
-            if (child['loc']) in closed_list:
-                existing_node = closed_list[(child['loc'])]
+            # initial state and pruning nodes that are constrained
+            if my_map[child_loc[0]][child_loc[1]] or is_constrained(curr['loc'], child_loc, curr['timestep'] + 1, constraintTable):
+                # print("Constrained")
+                # print(is_constrained(
+                #     curr['loc'], child_loc, curr['timestep']+1, constraintTable))
+                continue
+
+            child = {'loc': child_loc, 'g_val': curr['g_val'] + 1,
+                     'h_val': h_values[child_loc], 'parent': curr, 'timestep': curr['timestep'] + 1}
+
+            # child node expanded from here
+            # add the timestep when child nodes are being generated
+
+            if (child['loc'], child['timestep']) in closed_list:
+                existing_node = closed_list[(child['loc'], child['timestep'])]
                 if compare_nodes(child, existing_node):
-                    closed_list[(child['loc'])] = child
+                    closed_list[(child['loc'], child['timestep'])] = child
                     push_node(open_list, child)
             else:
-                closed_list[(child['loc'])] = child
+                closed_list[(child['loc'], child['timestep'])] = child
                 push_node(open_list, child)
 
     return None  # Failed to find solutions

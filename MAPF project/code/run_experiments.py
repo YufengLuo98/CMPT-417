@@ -10,6 +10,7 @@ from single_agent_planner import get_sum_of_cost
 
 SOLVER = "CBS"
 
+
 def print_mapf_instance(my_map, starts, goals):
     print('Start locations')
     print_locations(my_map, starts)
@@ -18,7 +19,8 @@ def print_mapf_instance(my_map, starts, goals):
 
 
 def print_locations(my_map, locations):
-    starts_map = [[-1 for _ in range(len(my_map[0]))] for _ in range(len(my_map))]
+    starts_map = [[-1 for _ in range(len(my_map[0]))]
+                  for _ in range(len(my_map))]
     for i in range(len(locations)):
         starts_map[locations[i][0]][locations[i][1]] = i
     to_print = ''
@@ -70,7 +72,8 @@ def import_mapf_instance(filename):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Runs various MAPF algorithms')
+    parser = argparse.ArgumentParser(
+        description='Runs various MAPF algorithms')
     parser.add_argument('--instance', type=str, default=None,
                         help='The name of the instance file(s)')
     parser.add_argument('--batch', action='store_true', default=False,
@@ -81,7 +84,6 @@ if __name__ == '__main__':
                         help='The solver to use (one of: {CBS,Independent,Prioritized}), defaults to ' + str(SOLVER))
 
     args = parser.parse_args()
-
 
     result_file = open("results.csv", "w", buffering=1)
 
@@ -108,7 +110,6 @@ if __name__ == '__main__':
 
         cost = get_sum_of_cost(paths)
         result_file.write("{},{}\n".format(file, cost))
-
 
         if not args.batch:
             print("***Test paths on a simulation***")
