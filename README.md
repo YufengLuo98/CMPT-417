@@ -18,7 +18,7 @@ or ran individually with ``` python run_experiments.py --instance "example_insta
 
 ### Resulting Data
 
-Our resulting data for CBS and ICTS can be seen below.
+Our resulting data for nodes expanded and time taken to find a solution can be found below.
 
 Increasing Cost Tree Search source code can be found here ``` https://github.com/AdamBignell/ICTS-vs-EPEA ```
 
